@@ -1,0 +1,62 @@
+version: 2
+
+sources:
+  - name: kbeauty_pipeline
+    database: end2end-pipeline-kbeautystore
+    schema: kbeauty_pipeline
+    description: "Raw staging tables written by Spark from GCS"
+
+    tables:
+      - name: stg_orders
+        description: "One row per order, customer fields flattened by Spark"
+        columns:
+          - name: order_id
+            description: "Unique order identifier"
+            tests:
+              - unique
+              - not_null
+          - name: order_date
+            tests:
+              - not_null
+          - name: channel
+            tests:
+              - not_null
+              - accepted_values:
+                  values: ['web', 'mobile_app']
+          - name: order_status
+            tests:
+              - accepted_values:
+                  values: ['completed', 'returned', 'cancelled']
+
+      - name: stg_order_items
+        description: "One row per line item, exploded from items array by Spark"
+        columns:
+          - name: line_item_id
+            tests:
+              - unique
+              - not_null
+          - name: order_id
+            tests:
+              - not_null
+          - name: product_id
+            tests:
+              - not_null
+          - name: quantity
+            tests:
+              - not_null
+          - name: sale_price
+            tests:
+              - not_null
+          - name: line_total
+            tests:
+              - not_null
+
+      - name: stg_products
+        description: "Daily product price snapshot"
+        columns:
+          - name: product_id
+            tests:
+              - not_null
+          - name: snapshot_date
+            tests:
+              - not_null

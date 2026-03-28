@@ -1,0 +1,69 @@
+version: 2
+
+models:
+
+  - name: dim_products
+    description: "Product dimension — one row per active product"
+    columns:
+      - name: product_id
+        tests:
+          - unique
+          - not_null
+      - name: category
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['Face', 'Hair', 'Body', 'Lips', 'Eyes', 'Tools']
+
+  - name: dim_customers
+    description: "Customer dimension derived from order history"
+    columns:
+      - name: customer_id
+        tests:
+          - unique
+          - not_null
+
+  - name: fact_order_items
+    description: "Core fact table — one row per completed line item"
+    columns:
+      - name: line_item_id
+        tests:
+          - unique
+          - not_null
+      - name: order_id
+        tests:
+          - not_null
+      - name: line_total
+        tests:
+          - not_null
+
+  - name: mart_weekly_revenue
+    description: "Weekly revenue by category — powers dashboard tile 1"
+    columns:
+      - name: week_start_date
+        tests:
+          - not_null
+      - name: category
+        tests:
+          - not_null
+      - name: total_revenue
+        tests:
+          - not_null
+
+  - name: mart_top_products
+    description: "Top products by units sold per week — powers dashboard tile 2"
+    columns:
+      - name: product_id
+        tests:
+          - not_null
+      - name: year_week
+        tests:
+          - not_null
+
+  - name: mart_customer_ltv
+    description: "Customer lifetime value aggregation"
+    columns:
+      - name: customer_id
+        tests:
+          - unique
+          - not_null

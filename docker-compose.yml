@@ -1,0 +1,87 @@
+version: "3.8"
+
+# K-Beauty Pipeline - Docker Compose
+#
+# Services:
+#   kestra    -> workflow orchestration UI (localhost:8080)
+#   postgres  -> Kestra's internal database
+#
+# Usage:
+#   docker compose up -d           # start everything
+#   docker compose up -d kestra    # start only Kestra
+#   docker compose logs -f kestra  # watch logs
+#
+# Ports forwarded in Codespaces:
+#   8080 -> Kestra UI
+
+services:
+
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB:       kestra
+      POSTGRES_USER:     kestra
+      POSTGRES_PASSWORD: kestra
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kestra"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - kbeauty
+
+  kestra:
+    image: kestra/kestra:latest
+    pull_policy: always
+    command: server standalone
+    user: root
+    environment:
+      KESTRA_CONFIGURATION: |
+        datasources:
+          postgres:
+            url: jdbc:postgresql://postgres:5432/kestra
+            driverClassName: org.postgresql.Driver
+            username: kestra
+            password: kestra
+        kestra:
+          server:
+            basic-auth:
+              enabled: false
+          repository:
+            type: postgres
+          storage:
+            type: local
+            local:
+              base-path: /app/storage
+          queue:
+            type: postgres
+          tasks:
+            tmp-dir:
+              path: /tmp/kestra-wd
+          url: http://localhost:8080
+    volumes:
+      - kestra_storage:/app/storage
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /tmp:/tmp
+      - ./kestra/flows:/flows:ro
+      # mount workspace so Kestra can run generator, dbt, gcloud
+      - /workspaces/DE-ZoomcampFinalProject-Kbeautystore-pipeline:/workspaces/DE-ZoomcampFinalProject-Kbeautystore-pipeline
+      - /home/codespace:/home/codespace:ro
+      - /home/codespace/google-cloud-sdk:/home/codespace/google-cloud-sdk:ro
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - kbeauty
+
+volumes:
+  postgres_data:
+  kestra_storage:
+
+networks:
+  kbeauty:
+    driver: bridge

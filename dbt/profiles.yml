@@ -1,0 +1,12 @@
+kbeauty_pipeline:
+  target: prod
+  outputs:
+    prod:
+      type: bigquery
+      method: service-account
+      project: end2end-pipeline-kbeautystore
+      dataset: kbeauty_pipeline
+      keyfile: "{{ env_var('GOOGLE_APPLICATION_CREDENTIALS') }}"
+      location: EU
+      timeout_seconds: 300
+      threads: 4
