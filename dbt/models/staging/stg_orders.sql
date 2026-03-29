@@ -2,9 +2,13 @@
 -- Cleans and casts the raw orders staging table from Spark
 
 with source as (
-    select * from {{ source('kbeauty_pipeline', 'stg_orders') }}
+    select *,
+        row_number() over (
+            partition by order_id, order_date 
+            order by _ingested_at desc
+        ) as rn
+    from {{ source('kbeauty_pipeline', 'stg_orders') }}
 ),
-
 cleaned as (
     select
         order_id,
@@ -29,7 +33,7 @@ cleaned as (
         format_date('%Y-W%W', cast(order_date as date))     as year_week
 
     from source
-    where order_id is not null
+    where rn = 1 and order_id is not null
 )
 
 select * from cleaned

@@ -2,7 +2,12 @@
 -- Cleans and casts the raw order items staging table from Spark
 
 with source as (
-    select * from {{ source('kbeauty_pipeline', 'stg_order_items') }}
+    select *,
+        row_number() over (
+            partition by line_item_id, order_date 
+            order by _ingested_at desc
+        ) as rn
+    from {{ source('kbeauty_pipeline', 'stg_order_items') }}
 ),
 
 cleaned as (
@@ -40,6 +45,7 @@ cleaned as (
     where line_item_id is not null
       and sale_price > 0
       and quantity > 0
+      and rn = 1
 )
 
 select * from cleaned

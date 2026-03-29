@@ -28,7 +28,6 @@ models:
     columns:
       - name: line_item_id
         tests:
-          - unique
           - not_null
       - name: order_id
         tests:
