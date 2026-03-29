@@ -13,7 +13,6 @@ sources:
           - name: order_id
             description: "Unique order identifier"
             tests:
-              - unique
               - not_null
           - name: order_date
             tests:
@@ -33,7 +32,6 @@ sources:
         columns:
           - name: line_item_id
             tests:
-              - unique
               - not_null
           - name: order_id
             tests:

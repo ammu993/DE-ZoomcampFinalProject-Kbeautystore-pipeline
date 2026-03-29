@@ -211,4 +211,4 @@ terraform.tfvars
 secrets/
 .terraform/
 *.tfstate
-*.tfstate.backup
+*.tfstate.backup*.zip

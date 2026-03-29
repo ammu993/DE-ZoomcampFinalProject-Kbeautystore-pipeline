@@ -348,23 +348,23 @@ def run_seed(destination: str = "gcs"):
     print(f"\n✅  Seed complete. {total_orders:,} orders across 365 days.\n")
 
 
-def run_daily(destination: str = "gcs"):
+def run_daily(destination: str = "gcs", target_date: date = None):
     """
-    Writes only yesterday's data.
-    Called by Airflow every day at e.g. 02:00 UTC.
+    Writes data for target_date (defaults to yesterday).
+    Called by Kestra daily, or manually with --date.
     """
-    yesterday = date.today() - timedelta(days=1)
-    client    = _gcs_client() if destination == "gcs" else None
+    target = target_date or (date.today() - timedelta(days=1))
+    client = _gcs_client() if destination == "gcs" else None
 
-    print(f"\n🌸  K-Beauty Generator — DAILY MODE  [{destination.upper()}]  {yesterday}")
+    print(f"K-Beauty Generator - DAILY MODE [{destination.upper()}] {target}")
 
-    orders, products = generate_day(yesterday)
+    orders, products = generate_day(target)
     if destination == "gcs":
-        write_to_gcs(yesterday, orders, products, client)
+        write_to_gcs(target, orders, products, client)
     else:
-        write_to_local(yesterday, orders, products)
+        write_to_local(target, orders, products)
 
-    print(f"✅  Done. {len(orders)} orders written for {yesterday}\n")
+    print(f"Done. {len(orders)} orders written for {target}")
 
 
 # ──────────────────────────────────────────
@@ -377,11 +377,18 @@ if __name__ == "__main__":
         "mode", choices=["seed", "daily", "local"],
         help="seed=backfill 1yr to GCS | daily=yesterday to GCS | local=local filesystem"
     )
+    parser.add_argument(
+        "--date",
+        default=None,
+        help="Date to generate (YYYY-MM-DD). Defaults to yesterday."
+    )
     args = parser.parse_args()
+
+    target = date.fromisoformat(args.date) if args.date else None
 
     if args.mode == "seed":
         run_seed(destination="gcs")
     elif args.mode == "daily":
-        run_daily(destination="gcs")
+        run_daily(destination="gcs", target_date=target)
     elif args.mode == "local":
-        run_daily(destination="local")
+        run_daily(destination="local", target_date=target)
