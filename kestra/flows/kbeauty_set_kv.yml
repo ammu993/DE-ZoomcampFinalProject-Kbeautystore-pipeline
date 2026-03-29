@@ -1,0 +1,27 @@
+id: kbeauty_set_kv
+namespace: kbeauty.production
+
+tasks:
+  - id: gcs_bucket
+    type: io.kestra.plugin.core.kv.Set
+    key: GCS_BUCKET
+    kvType: STRING
+    value: kbeauty-data-lake-end2end
+
+  - id: gcs_project
+    type: io.kestra.plugin.core.kv.Set
+    key: GCS_PROJECT
+    kvType: STRING
+    value: end2end-pipeline-kbeautystore
+
+  - id: gcp_region
+    type: io.kestra.plugin.core.kv.Set
+    key: GCP_REGION
+    kvType: STRING
+    value: europe-west4
+
+  - id: bq_dataset
+    type: io.kestra.plugin.core.kv.Set
+    key: BQ_DATASET
+    kvType: STRING
+    value: kbeauty_pipeline

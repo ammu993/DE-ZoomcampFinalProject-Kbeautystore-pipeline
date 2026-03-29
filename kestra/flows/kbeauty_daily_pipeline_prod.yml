@@ -1,0 +1,135 @@
+id: kbeauty_daily_pipeline_prod
+namespace: kbeauty.production
+
+description: |
+  K-Beauty daily production pipeline.
+  Runs at 02:00 UTC every day.
+  Uses Kestra KV store for all credentials and config.
+
+inputs:
+  - id: target_date
+    type: STRING
+    defaults: ""
+    description: "Date to process (YYYY-MM-DD). Leave empty for scheduled runs."
+
+triggers:
+  - id: daily_schedule
+    type: io.kestra.plugin.core.trigger.Schedule
+    cron: "0 2 * * *"
+
+variables:
+  path: "/home/codespace/google-cloud-sdk/bin:/home/codespace/.python/current/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+  generator_dir: "/workspaces/DE-ZoomcampFinalProject-Kbeautystore-pipeline/generator"
+  dbt_dir: "/workspaces/DE-ZoomcampFinalProject-Kbeautystore-pipeline/dbt"
+  gcp_key: "/workspaces/DE-ZoomcampFinalProject-Kbeautystore-pipeline/secrets/gcp-key.json"
+
+tasks:
+
+  - id: generate_raw_data
+    type: io.kestra.plugin.scripts.shell.Commands
+    taskRunner:
+      type: io.kestra.plugin.core.runner.Process
+    env:
+      PATH: "{{ vars.path }}"
+      GCS_BUCKET: "{{ kv('GCS_BUCKET') }}"
+      GCS_PROJECT: "{{ kv('GCS_PROJECT') }}"
+      GOOGLE_APPLICATION_CREDENTIALS: "{{ vars.gcp_key }}"
+      RUN_DATE: "{{ inputs.target_date | default(execution.startDate | dateAdd(-1, 'DAYS') | date('yyyy-MM-dd')) }}"
+    commands:
+      - pip install faker numpy google-cloud-storage -q
+      - cd {{ vars.generator_dir }} && python generate_raw.py daily --date $RUN_DATE
+
+  - id: create_dataproc_cluster
+    type: io.kestra.plugin.scripts.shell.Commands
+    taskRunner:
+      type: io.kestra.plugin.core.runner.Process
+    env:
+      PATH: "{{ vars.path }}"
+      GOOGLE_APPLICATION_CREDENTIALS: "{{ vars.gcp_key }}"
+    commands:
+      - gcloud auth activate-service-account --key-file={{ vars.gcp_key }}
+      - gcloud config set project {{ kv('GCS_PROJECT') }}
+      - >
+        gcloud dataproc clusters create {{ kv('GCS_PROJECT') }}-cluster
+        --region={{ kv('GCP_REGION') }}
+        --zone=europe-west4-a
+        --master-machine-type=n1-standard-4
+        --worker-machine-type=n1-standard-4
+        --num-workers=2
+        --image-version=2.1-debian11
+        --project={{ kv('GCS_PROJECT') }}
+
+  - id: spark_ingest
+    type: io.kestra.plugin.scripts.shell.Commands
+    taskRunner:
+      type: io.kestra.plugin.core.runner.Process
+    env:
+      PATH: "{{ vars.path }}"
+      GOOGLE_APPLICATION_CREDENTIALS: "{{ vars.gcp_key }}"
+      RUN_DATE: "{{ inputs.target_date | default(execution.startDate | dateAdd(-1, 'DAYS') | date('yyyy-MM-dd')) }}"
+    commands:
+      - gcloud auth activate-service-account --key-file={{ vars.gcp_key }}
+      - gcloud config set project {{ kv('GCS_PROJECT') }}
+      - >
+        gcloud dataproc jobs submit pyspark
+        gs://{{ kv('GCS_BUCKET') }}/jobs/spark_ingest.py
+        --cluster={{ kv('GCS_PROJECT') }}-cluster
+        --region={{ kv('GCP_REGION') }}
+        --project={{ kv('GCS_PROJECT') }}
+        --jars=gs://spark-lib/bigquery/spark-bigquery-latest_2.12.jar
+        -- --date=$RUN_DATE
+
+  - id: delete_dataproc_cluster
+    type: io.kestra.plugin.scripts.shell.Commands
+    taskRunner:
+      type: io.kestra.plugin.core.runner.Process
+    env:
+      PATH: "{{ vars.path }}"
+      GOOGLE_APPLICATION_CREDENTIALS: "{{ vars.gcp_key }}"
+    commands:
+      - gcloud auth activate-service-account --key-file={{ vars.gcp_key }}
+      - gcloud config set project {{ kv('GCS_PROJECT') }}
+      - >
+        gcloud dataproc clusters delete {{ kv('GCS_PROJECT') }}-cluster
+        --region={{ kv('GCP_REGION') }}
+        --project={{ kv('GCS_PROJECT') }}
+        --quiet
+
+  - id: dbt_run
+    type: io.kestra.plugin.scripts.shell.Commands
+    taskRunner:
+      type: io.kestra.plugin.core.runner.Process
+    env:
+      PATH: "{{ vars.path }}"
+      GOOGLE_APPLICATION_CREDENTIALS: "{{ vars.gcp_key }}"
+    commands:
+      - pip install dbt-bigquery -q
+      - cd {{ vars.dbt_dir }} && dbt run --profiles-dir . --target prod
+
+  - id: dbt_test
+    type: io.kestra.plugin.scripts.shell.Commands
+    taskRunner:
+      type: io.kestra.plugin.core.runner.Process
+    env:
+      PATH: "{{ vars.path }}"
+      GOOGLE_APPLICATION_CREDENTIALS: "{{ vars.gcp_key }}"
+    commands:
+      - pip install dbt-bigquery -q
+      - cd {{ vars.dbt_dir }} && dbt test --profiles-dir . --target prod
+
+errors:
+  - id: cleanup_on_error
+    type: io.kestra.plugin.scripts.shell.Commands
+    taskRunner:
+      type: io.kestra.plugin.core.runner.Process
+    env:
+      PATH: "{{ vars.path }}"
+      GOOGLE_APPLICATION_CREDENTIALS: "{{ vars.gcp_key }}"
+    commands:
+      - gcloud auth activate-service-account --key-file={{ vars.gcp_key }}
+      - gcloud config set project {{ kv('GCS_PROJECT') }}
+      - >
+        gcloud dataproc clusters delete {{ kv('GCS_PROJECT') }}-cluster
+        --region={{ kv('GCP_REGION') }}
+        --project={{ kv('GCS_PROJECT') }}
+        --quiet || true
