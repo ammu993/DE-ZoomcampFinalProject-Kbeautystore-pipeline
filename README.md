@@ -171,6 +171,9 @@ It updates automatically when dbt refreshes the marts after each daily pipeline 
 
 ![Dashboard](assets/dashboard.png)
 
+After executing pipeline for 2026-03-30
+![](assets/dashboard2.png)
+
 ### Tile 1 — Weekly Revenue by Category
 
 A line chart showing total revenue per week broken down by product category 
