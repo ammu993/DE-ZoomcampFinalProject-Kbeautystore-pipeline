@@ -205,6 +205,7 @@ cd DE-ZoomcampFinalProject-Kbeautystore-pipeline
    - Cloud Dataproc
    - Compute Engine
    - Identity and Access Management (IAM)
+   - Cloud Resource Manager
 3. Create a service account with these roles:
    - Storage Admin
    - BigQuery Admin
@@ -341,6 +342,10 @@ Then:
 4. The pipeline runs automatically at **02:00 UTC daily**
 5. To trigger manually for a specific date, click **Execute** and enter the date
    in `YYYY-MM-DD` format (e.g. `2026-03-29`) in the `target_date` input field
+> **Note:** The Kestra pipeline runs at 02:00 UTC and processes **yesterday's** data.
+> If you start Kestra on March 30, it will ingest March 29's orders. To process a 
+> specific date, execute the flow manually from the Kestra UI and enter the date 
+> in `YYYY-MM-DD` format in the `target_date` input field.
    
 ![Kestra_flow](assets/kestra_flow_success.png)
 
