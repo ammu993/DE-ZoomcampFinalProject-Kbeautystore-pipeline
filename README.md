@@ -167,7 +167,7 @@ Kestra's KV store — no credentials are hardcoded in the flow YAML.
 The dashboard is built in **Looker Studio** and connects directly to BigQuery mart tables.
 It updates automatically when dbt refreshes the marts after each daily pipeline run.
 
-**[View Dashboard](YOUR_LOOKER_STUDIO_LINK_HERE)**
+**[View Dashboard](https://lookerstudio.google.com/reporting/d534fcb1-d766-4975-a34f-6b291d863a8c)**
 
 ![Dashboard](assets/dashboard.png)
 
