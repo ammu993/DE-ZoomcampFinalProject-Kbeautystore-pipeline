@@ -297,6 +297,7 @@ for date in $(seq 0 89 | xargs -I{} date -d "2025-12-28 + {} days" +%Y-%m-%d); d
     -- --date=$date
 done
 ```
+![sparkjobs](assets/sparkjobs.png)
  
 ### 8. Run dbt transformations
  
@@ -340,7 +341,9 @@ Then:
 4. The pipeline runs automatically at **02:00 UTC daily**
 5. To trigger manually for a specific date, click **Execute** and enter the date
    in `YYYY-MM-DD` format (e.g. `2026-03-29`) in the `target_date` input field
- 
+   
+![Kestra_flow](assets/kestra_flow_success.png)
+
 ### 10. Connect Looker Studio
  
 1. Go to [lookerstudio.google.com](https://lookerstudio.google.com)
